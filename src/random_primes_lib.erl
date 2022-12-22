@@ -9,7 +9,7 @@
 
 -include("random_primes.hrl").
 
--spec get_env(atom(), atom()) ->'undefined' | {'ok', term()}.
+-spec get_env(atom(), atom()) ->'undefined' | term().
 get_env(Server, Application) ->
     case application:get_env(Server, Application) of
       {ok, Value} -> Value;
