@@ -1,0 +1,15 @@
+{application, random_primes,
+ [{description, "Application generates random numbers to filter primes and the places in Reddis"},
+  {vsn, "0.1.0"},
+  {registered, []},
+  {mod, {random_primes_app, []}},
+  {applications,
+   [kernel,
+    stdlib
+   ]},
+  {env,[]},
+  {modules, []},
+
+  {licenses, ["Apache-2.0"]},
+  {links, []}
+ ]}.
