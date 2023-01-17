@@ -6,13 +6,13 @@
          stop/0]).
 %% gen_server callbacks
 -export([init/1,
-	     handle_call/3,
-	     handle_cast/2,
-	     handle_info/2,
+         handle_call/3,
+         handle_cast/2,
+         handle_continue/2,
+         handle_info/2,
          code_change/3,
          terminate/2]).
--export([start_filter_loop/1,
-         create_prime_list/1]).
+-export([create_prime_list/1]).
 %% Tests
 -export([checks_primes_in_db/0]).
 
@@ -21,8 +21,8 @@
 -record(state, {
     prime_range = ?PRIME_RANGE :: pos_integer(),
     rate_per_second = ?RATE_PER_SECOND :: pos_integer(),
-    prime_list = [2]:: [pos_integer()],
-    filter_loop_proc :: pid()}).
+    delay = 1000 :: pos_integer(), %ms
+    prime_list = [2]:: [pos_integer()]}).
 
 start_link(PrimeRange, RatePerSecond) ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [PrimeRange, RatePerSecond], []).
@@ -34,33 +34,43 @@ init([PrimeRange, RatePerSecond]) ->
     spawn(?MODULE, create_prime_list, [PrimeRange]),
     {ok, #state{prime_range = PrimeRange,
                 rate_per_second = RatePerSecond,
-                filter_loop_proc =  spawn_link(?MODULE, start_filter_loop, [RatePerSecond])}}.
+                delay = random_primes_lib:calc_delay(RatePerSecond)}}.
 
 handle_call(Request, _From, State) ->
-    logger:error("Unexpected Request ~p", [Request]),
+    logger:error("~p:handle_call. Unexpected Request ~p", [?MODULE, Request]),
     {reply, ok, State}.
 
-handle_cast({is_in_prime_list, BinaryValue}, State) ->
-    try list_to_integer(binary_to_list(BinaryValue)) of
-      Number ->
-        EredisProc = random_primes_lib:get_eredis_supervisioned_proc(),
-        case lists:member(Number, State#state.prime_list) of
-          true ->
-            eredis:q_async(EredisProc, ["SADD", random_primes_lib:get_env(?EREDIS, prime_set_key), Number]);
-          false ->
-            ok
-        end
-    catch
-        _:_ -> 0
+handle_continue(is_in_prime_list, #state{rate_per_second = RatePerSecond,
+                                         prime_list = PrimeList,
+                                         delay = Delay} = State) ->
+    logger:debug("~p:handle_continue/2",[?MODULE]),
+    EredisProc = random_primes_lib:get_eredis_supervisioned_proc(),
+    case eredis:q(EredisProc, ["RPOP", random_primes_lib:get_env(?EREDIS, number_list_key)]) of
+      {ok, BinaryValue} when BinaryValue =/= undefined ->
+        logger:debug("handle_continue/2 BinaryValue ~p" ,[BinaryValue]),
+        try list_to_integer(binary_to_list(BinaryValue)) of
+          Number ->
+            case lists:member(Number, PrimeList) of
+              true ->
+                eredis:q_async(EredisProc, ["SADD", random_primes_lib:get_env(?EREDIS, prime_set_key), Number]);
+              false -> not_prime
+            end
+        catch
+            _:_ ->  not_binary_integer
+        end;
+      _Any -> Delay
     end,
-    {noreply, State};
+    {noreply, State, {continue, is_in_prime_list}};
+
+handle_continue(Msg, State) ->
+    logger:debug("~p:handle_continue. Unexpected Msg ",[?MODULE, Msg]),
+    {noreply, State, {continue, is_in_prime_list}}.
+
 handle_cast({set_prime_list, PrimeList}, State) ->
     logger:info("Init new range of prime list"),
-    LoopProc = State#state.filter_loop_proc,
-    LoopProc ! start_filter_loop,
-    {noreply, State#state{prime_list = PrimeList}};
+    {noreply, State#state{prime_list = PrimeList}, {continue, is_in_prime_list}};
 handle_cast(Msg, State) ->
-    logger:info("Unexpected Msg ~p", [Msg]),
+    logger:error("~p:handle_cast. Unexpected Msg ~p", [?MODULE, Msg]),
     {noreply, State}.
 
 handle_info(_, State) ->
@@ -71,21 +81,6 @@ code_change(_OldVsn, State, _Extra) -> {ok, State}.
 terminate(Reason, _State) ->
     logger:info("Terminate with reason", [Reason]),
     ok.
-
-start_filter_loop(Rate) ->
-    receive start_filter_loop -> continue
-    end,
-    Delay = random_primes_lib:calc_delay(Rate),
-    filter_loop(Delay).
-
-filter_loop(Delay) ->
-    EredisProc = random_primes_lib:get_eredis_supervisioned_proc(),
-    case eredis:q(EredisProc, ["RPOP", random_primes_lib:get_env(?EREDIS, number_list_key)]) of
-      {ok, Value} when Value =/= undefined ->
-        gen_server:cast(?MODULE, {is_in_prime_list, Value});
-      _Any -> timer:sleep(Delay)
-    end,
-    filter_loop(Delay).
 
 -spec create_prime_list(pos_integer()) -> [pos_integer()].
 create_prime_list(Int) ->
