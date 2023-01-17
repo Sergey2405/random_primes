@@ -26,7 +26,6 @@ stop() ->
     gen_server:stop(?MODULE).
 
 init([PrimeRange, RatePerSecond]) ->
-    % PrimeList = create_prime_list(PrimeRange),
     spawn_link(?MODULE, start_random_number_loop, [RatePerSecond]),
     {ok, #state{prime_range = PrimeRange,
                 rate_per_second = RatePerSecond}}.
@@ -36,8 +35,7 @@ handle_call(Request, _From, State) ->
     {reply, ok, State}.
 
 handle_cast(generate_random_number_evenly, State) ->
-    % # get it from state
-    RandomNumber = erlang:phash2(os:timestamp(), State#state.prime_range + 2) - 1,
+    RandomNumber = erlang:phash2(os:timestamp(), State#state.prime_range - 1) +2,
     EredisProc = random_primes_lib:get_eredis_supervisioned_proc(),
     eredis:q_async(EredisProc, ["LPUSH", random_primes_lib:get_env(?EREDIS, number_list_key), RandomNumber]),
     {noreply, State};

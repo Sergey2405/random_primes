@@ -52,7 +52,7 @@ Parameters
 
 random_primes parameters - general parameters for the application.
 
-prime_range - integer, 100000 by default.
+prime_range - integer, 1000000 by default.
 Defines range of generated value for random_primes_gen and random_primes_filter
 
 rate_per_second - integer, 3000 by default - number of randomly generated values in a second.
