@@ -2,7 +2,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/3,
+-export([start_link/2,
          stop/0]).
 %% gen_server callbacks
 -export([init/1,
@@ -25,24 +25,23 @@
     delay = 1000 :: pos_integer(), %ms
     prime_list = [2]:: [pos_integer()]}).
 
-start_link(PrimeRange, RatePerSecond, Name) ->
-    gen_server:start_link({local, Name}, ?MODULE, [PrimeRange, RatePerSecond, Name], []).
+start_link(RatePerSecond, Name) ->
+    gen_server:start_link({local, Name}, ?MODULE, [RatePerSecond, Name], []).
 
 stop() ->
     gen_server:stop(?MODULE).
 
-init([PrimeRange, RatePerSecond, Name]) ->
+init([RatePerSecond, Name]) ->
     {ok, #state{name = Name,
-                prime_range = PrimeRange,
                 rate_per_second = RatePerSecond,
                 delay = random_primes_lib:calc_delay(RatePerSecond)},
-     {continue, is_in_prime_list}}. 
+     {continue, is_prime}}.
 
 handle_call(Request, _From, State) ->
     logger:error("~p:handle_call. Unexpected Request ~p", [?MODULE, Request]),
     {reply, ok, State}.
 
-handle_continue(is_in_prime_list, #state{rate_per_second = RatePerSecond,
+handle_continue(is_prime, #state{rate_per_second = RatePerSecond,
                                          prime_list = PrimeList,
                                          delay = Delay} = State) -> 
     logger:debug("~p:handle_continue/2",[?MODULE]),
@@ -67,10 +66,10 @@ handle_continue(is_in_prime_list, #state{rate_per_second = RatePerSecond,
           Error
     end,
 
-    {noreply, State, {continue, is_in_prime_list}}; % rename 
+    {noreply, State, {continue, is_prime}};
 handle_continue(Msg, State) ->
     logger:debug("~p:handle_continue. Unexpected Msg ",[?MODULE, Msg]),
-    {noreply, State, {continue, is_in_prime_list}}.
+    {noreply, State, {continue, is_prime}}.
 
 handle_cast(Msg, State) ->
     logger:error("~p:handle_cast. Unexpected Msg ~p", [?MODULE, Msg]),
