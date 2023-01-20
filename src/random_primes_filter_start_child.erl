@@ -84,11 +84,12 @@ add_child() ->
     ProcIxs = get_proc_ixs(),
     NumberOfProcesses = length(ProcIxs),
     NewIx = 
-      case lists:seq(1, NumberOfProcesses) -- ProcIxs of
-        [] -> NumberOfProcesses + 1;
-        [H|_] -> H
-      end,
-    #{max_processes := MaxNumberOfProcesses} = random_primes_lib:get_env(?APP, filter),
+        case lists:seq(1, NumberOfProcesses) -- ProcIxs of
+            [] -> NumberOfProcesses + 1;
+            [H|_] -> H
+        end,
+
+    MaxNumberOfProcesses = random_primes_lib:get_env(?APP, filter, max_processes, ?MAX_FILTER_PROCESSES),
     if NumberOfProcesses < MaxNumberOfProcesses ->
         supervisor:start_child(random_primes_filter_sup, [list_to_atom("filter_" ++ integer_to_list(NewIx))]);
         true -> not_started
