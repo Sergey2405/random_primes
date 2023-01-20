@@ -1,5 +1,5 @@
 -define(APP, random_primes).
--define(SUPER_VISOR, random_primes_sup).
+-define(SUPERVISOR, random_primes_sup).
 -define(EREDIS, eredis).
 
 -define(LOCAL_HOST, "127.0.0.1").

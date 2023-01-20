@@ -22,7 +22,7 @@ get_env(Server, Application, DefaultValue) ->
 
 -spec get_eredis_supervisioned_proc() -> pid() | undefined.
 get_eredis_supervisioned_proc() ->
-    get_supervisioned_proc(?SUPER_VISOR, ?EREDIS).
+    get_supervisioned_proc(?SUPERVISOR, ?EREDIS).
 
 -spec get_supervisioned_proc(atom(), atom()) -> pid() | undefined.
 get_supervisioned_proc(SuperVisor, Application) ->

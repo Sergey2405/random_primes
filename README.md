@@ -38,7 +38,7 @@ The third part is obligatory. It starts erlang Redis with corresponding paramete
 DB password is not enabled yet. Thereby, Redis server should be run on a remote/local host
 without protected mode as follows:
 ```
-redis server --protected mode no
+redis-server --protected-mode no
 ```
 
 All of these parameters are set in the config.
