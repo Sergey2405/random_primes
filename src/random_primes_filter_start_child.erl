@@ -38,30 +38,35 @@ init([]) ->
     {ok, {SupFlags, []}}.
 
 observer(Delay) ->
-    put(llen, 0),
+    put(llen_history, [0]),
     loop_observer(Delay).
 
 loop_observer(Delay) ->
 
     MinInterval = random_primes_lib:get_env(?APP, filter, min_dynamic_interval, ?MIN_FILTER_DYNAMIC_INTERVAL),
     MaxInterval = random_primes_lib:get_env(?APP, filter, max_dynamic_interval, ?MAX_FILTER_DYNAMIC_INTERVAL),
+    MaxNumberOfProcesses = random_primes_lib:get_env(?APP, filter, max_processes, ?MAX_FILTER_PROCESSES),
 
     EredisProc = random_primes_lib:get_eredis_supervisioned_proc(),
     NumberOfProcesses = length(supervisor:which_children(random_primes_filter_sup)),
     {ok, BinaryValue} =  eredis:q(EredisProc, ["LLEN", random_primes_lib:get_env(?EREDIS, number_list_key)]),
-
     CurrLlen = list_to_integer(binary_to_list(BinaryValue)),
-    PrevLlen =  put(llen, CurrLlen),
 
-    % io:format("observer: ~p: Currllen=~p NumberOfProcesses=~p~n",
-    %           [calendar:now_to_datetime(os:timestamp()),
-    %            CurrLlen,NumberOfProcesses]),
+    LHistory = get(llen_history),
+    MaxLlen = lists:max(LHistory),
+    NewLHistory= lists:sublist([CurrLlen|LHistory], 1, 3),
+    put(llen_history, NewLHistory),
+
+
+    io:format("observer: ~p: Currllen=~p NumberOfProcesses=~p~n",
+              [calendar:now_to_datetime(os:timestamp()),
+               CurrLlen,NumberOfProcesses]),
 
     NewDelay = 
-        if  PrevLlen < 1000 -> % magic number
+        if  MaxLlen < NumberOfProcesses * MaxNumberOfProcesses ->
                 make_childs(delete, max(NumberOfProcesses div 4, 1)),
                 min(Delay + Delay div 2, MaxInterval);%ms
-            CurrLlen >= PrevLlen ->
+            CurrLlen > MaxLlen ->
                 make_childs(add, max(NumberOfProcesses, 1)),
                 max(Delay div 2, MinInterval);%ms
             true ->
@@ -97,8 +102,8 @@ add_child() ->
 
 delete_child() ->
     ProcIxs = get_proc_ixs(),
-    NumberOfProcess = length(ProcIxs),
-    if NumberOfProcess > 1 ->
+    NumberOfProcesses = length(ProcIxs),
+    if NumberOfProcesses > 1 ->
         ProcToKill = hd([Pid || {_, Pid, _, _} <- supervisor:which_children(random_primes_filter_sup)]),
         supervisor:terminate_child(random_primes_filter_sup, ProcToKill);
        true -> undefined

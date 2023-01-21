@@ -31,7 +31,7 @@ init([]) ->
                     MapValue when is_map(MapValue) ->
                         RatePerSecond = random_primes_lib:get_env(?APP, generator, rate_per_second, ?RATE_PER_SECOND),
                         PrimeRange = random_primes_lib:get_env(?APP, generator, prime_range, ?RATE_PER_SECOND),
-                        [?SPEC_WORKER(random_primes_gen, [RatePerSecond, PrimeRange])|ChildSpecs]
+                        [?SPEC_WORKER(random_primes_gen, [PrimeRange, RatePerSecond])|ChildSpecs]
                   end,
     ChildSpecs3 = case random_primes_lib:get_env(?APP, filter) of
                     undefined -> ChildSpecs2;

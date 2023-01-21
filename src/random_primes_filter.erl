@@ -47,7 +47,7 @@ handle_continue(is_prime, #state{rate_per_second = RatePerSecond,
     logger:debug("~p:handle_continue/2",[?MODULE]),
     EredisProc = random_primes_lib:get_eredis_supervisioned_proc(),
     case eredis:q(EredisProc, ["RPOP", random_primes_lib:get_env(?EREDIS, number_list_key)]) of
-      {ok, undefined} -> timer:sleep(Delay); 
+      {ok, undefined} -> timer:sleep(1000);
       {ok, BinaryValue} ->
         logger:debug("handle_continue/2 BinaryValue ~p" ,[BinaryValue]),
         try list_to_integer(binary_to_list(BinaryValue)) of
