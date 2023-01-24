@@ -41,29 +41,33 @@ handle_call(Request, _From, State) ->
     logger:error("~p:handle_call. Unexpected Request ~p", [?MODULE, Request]),
     {reply, ok, State}.
 
-handle_continue(is_prime, #state{rate_per_second = RatePerSecond,
-                                         prime_list = PrimeList,
-                                         delay = Delay} = State) -> 
+handle_continue(is_prime, #state{name = Name,
+                                 rate_per_second = RatePerSecond,
+                                 prime_list = PrimeList,
+                                 delay = Delay} = State) ->
     logger:debug("~p:handle_continue/2",[?MODULE]),
     EredisProc = random_primes_lib:get_eredis_supervisioned_proc(),
     case eredis:q(EredisProc, ["RPOP", random_primes_lib:get_env(?EREDIS, number_list_key)]) of
-      {ok, undefined} -> timer:sleep(1000);
-      {ok, BinaryValue} ->
-        logger:debug("handle_continue/2 BinaryValue ~p" ,[BinaryValue]),
-        try list_to_integer(binary_to_list(BinaryValue)) of
-          Number ->
-            % case lists:member(Number, PrimeList) of
-            case is_prime(Number) of 
-              true ->
-                eredis:q_async(EredisProc, ["SADD", random_primes_lib:get_env(?EREDIS, prime_set_key), Number]);
-              false -> not_prime
-            end
-        catch
-            _:_ ->  not_binary_integer
-        end;
+        {ok, undefined} ->
+            case Name of
+                filter_1 -> timer:sleep(1000);
+                _ -> supervisor:terminate_child(random_primes_filter_sup, self())
+            end;
+        {ok, BinaryValue} ->
+            logger:debug("handle_continue/2 BinaryValue ~p" ,[BinaryValue]),
+            try list_to_integer(binary_to_list(BinaryValue)) of
+                Number ->
+                case is_prime(Number) of
+                  true ->
+                    eredis:q_async(EredisProc, ["SADD", random_primes_lib:get_env(?EREDIS, prime_set_key), Number]);
+                  false -> not_prime
+                end
+            catch
+                _:_ ->  not_binary_integer
+            end;
         Error ->
-          logger:error("Error in eredis:q/2: ~p", [Error]),
-          Error
+            logger:error("Error in eredis:q/2: ~p", [Error]),
+  Error
     end,
 
     {noreply, State, {continue, is_prime}};

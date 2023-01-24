@@ -43,15 +43,12 @@ observer(Delay) ->
 
 loop_observer(Delay) ->
 
-    MinInterval = random_primes_lib:get_env(?APP, filter, min_dynamic_interval, ?MIN_FILTER_DYNAMIC_INTERVAL),
-    MaxInterval = random_primes_lib:get_env(?APP, filter, max_dynamic_interval, ?MAX_FILTER_DYNAMIC_INTERVAL),
-    MaxNumberOfProcesses = random_primes_lib:get_env(?APP, filter, max_processes, ?MAX_FILTER_PROCESSES),
+    NumberOfProcesses = length(supervisor:which_children(random_primes_filter_sup)),
 
     EredisProc = random_primes_lib:get_eredis_supervisioned_proc(),
-    NumberOfProcesses = length(supervisor:which_children(random_primes_filter_sup)),
     {ok, BinaryValue} =  eredis:q(EredisProc, ["LLEN", random_primes_lib:get_env(?EREDIS, number_list_key)]),
-    CurrLlen = list_to_integer(binary_to_list(BinaryValue)),
 
+    CurrLlen = list_to_integer(binary_to_list(BinaryValue)),
     LHistory = get(llen_history),
     MaxLlen = lists:max(LHistory),
     NewLHistory= lists:sublist([CurrLlen|LHistory], 1, 3),
@@ -60,21 +57,16 @@ loop_observer(Delay) ->
 
     io:format("observer: ~p: Currllen=~p NumberOfProcesses=~p~n",
               [calendar:now_to_datetime(os:timestamp()),
-               CurrLlen,NumberOfProcesses]),
+               CurrLlen, NumberOfProcesses]),
 
-    NewDelay = 
-        if  MaxLlen < NumberOfProcesses * MaxNumberOfProcesses ->
-                make_childs(delete, max(NumberOfProcesses div 4, 1)),
-                min(Delay + Delay div 2, MaxInterval);%ms
-            CurrLlen > MaxLlen ->
-                make_childs(add, max(NumberOfProcesses, 1)),
-                max(Delay div 2, MinInterval);%ms
-            true ->
-                make_childs(delete, max(NumberOfProcesses div 4, 1)),
-                min(Delay + Delay div 2, MaxInterval)%ms
-        end,
+
+    if  CurrLlen > MaxLlen ->
+            make_childs(add, max(NumberOfProcesses div 2, 1));
+        true ->
+            ok
+    end,
     timer:sleep(Delay),
-    loop_observer(NewDelay).
+    loop_observer(Delay).
 
 
 make_childs(add, Number) when Number > 0 ->
