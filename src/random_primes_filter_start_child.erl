@@ -30,7 +30,7 @@ init([]) ->
     FilterType = random_primes_lib:get_env(?APP, filter, type, static),
     case FilterType of
         dynamic ->
-            spawn_link(?MODULE, observer, [1000]);
+            spawn_link(?MODULE, observer, [random_primes_lib:get_env(?APP, filter, dynamic_interval, ?FILTER_DYNAMIC_INTERVAL)]);
         _ ->
             timer:apply_after(1000, ?MODULE, make_childs, [add, MaxNumberOfProcesses])
     end,
@@ -54,11 +54,9 @@ loop_observer(Delay) ->
     NewLHistory= lists:sublist([CurrLlen|LHistory], 1, 3),
     put(llen_history, NewLHistory),
 
-
-    io:format("observer: ~p: Currllen=~p NumberOfProcesses=~p~n",
-              [calendar:now_to_datetime(os:timestamp()),
-               CurrLlen, NumberOfProcesses]),
-
+    % io:format("observer: ~p: Currllen=~p NumberOfProcesses=~p~n",
+    %           [calendar:now_to_datetime(os:timestamp()),
+    %            CurrLlen, NumberOfProcesses]),
 
     if  CurrLlen > MaxLlen ->
             make_childs(add, max(NumberOfProcesses div 2, 1));

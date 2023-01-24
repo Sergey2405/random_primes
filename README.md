@@ -50,16 +50,30 @@ It is set in the config, see the description below.
 Parameters
 -------------
 
-random_primes parameters - general parameters for the application.
 
-prime_range - integer, 1000000 by default.
-Defines range of generated value for random_primes_gen and random_primes_filter
+generator - Defines application behavior - whether generator is enabled.
+Is represent as map with following parameters:
 
-rate_per_second - integer, 3000 by default - number of randomly generated values in a second.
+- prime_range - integer, 1000000 by default.
+  Defines range of generated value for random_primes_gen and random_primes_filter
 
-generator - boolean, false by default. Defines application behavior - whether generator is enabled.
+- rate_per_second - integer, 3000 by default - number of randomly generated values in a second.
 
-filter - boolean, false by default. Defines application behavior - whether filter is enabled.
+
+filter -Defines application behavior - whether filter is enabled.
+Is represent as map with following parameters:
+
+ - type - dynamic|static. Defines numbder of processes that fetch value from the Redis queue
+   to check for being prime.
+   If it is static, number of processes is strictly determined by max_processes parameter.
+   If it is dynamic. Number of process is adaptive.
+   It is more or equal 1 and limited by max_processes parameter.
+
+- max_processes - integer, 1000 by default.
+  Defines max number of filter processes.
+
+- dynamic_interval - integers, ms, 1000 by default.
+  Defines time interval when the filter calculates wether to increase number of processes.
 
 
 eredis parameters - parameters to connect to Redis

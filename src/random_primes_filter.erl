@@ -49,9 +49,10 @@ handle_continue(is_prime, #state{name = Name,
     EredisProc = random_primes_lib:get_eredis_supervisioned_proc(),
     case eredis:q(EredisProc, ["RPOP", random_primes_lib:get_env(?EREDIS, number_list_key)]) of
         {ok, undefined} ->
-            case Name of
-                filter_1 -> timer:sleep(1000);
-                _ -> supervisor:terminate_child(random_primes_filter_sup, self())
+            case {Name, random_primes_lib:get_env(?APP, filter, type, dynamic)} of
+                {filter_1, _} -> timer:sleep(1000);
+                {_, dynamic} -> supervisor:terminate_child(random_primes_filter_sup, self());
+                _ -> timer:sleep(1000)
             end;
         {ok, BinaryValue} ->
             logger:debug("handle_continue/2 BinaryValue ~p" ,[BinaryValue]),
@@ -67,7 +68,7 @@ handle_continue(is_prime, #state{name = Name,
             end;
         Error ->
             logger:error("Error in eredis:q/2: ~p", [Error]),
-  Error
+            Error
     end,
 
     {noreply, State, {continue, is_prime}};
