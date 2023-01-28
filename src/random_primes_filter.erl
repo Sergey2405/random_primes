@@ -92,7 +92,7 @@ terminate(Reason, _State) ->
     ok.
 
 % Need for tests
--spec create_prime_list(pos_integer(), atom() | pos_integer()) -> [pos_integer()].
+-spec create_prime_list(pos_integer(), atom() | [pos_integer()]) -> [pos_integer()].
 create_prime_list(Int, Name) when is_atom(Name) ->
     logger:debug("prime list creating"),
     InitPrimeList = [3, 2],
