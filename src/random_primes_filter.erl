@@ -48,9 +48,11 @@ handle_continue(is_prime, #state{name = Name,
     logger:debug("~p:handle_continue/2",[?MODULE]),
     EredisProc = random_primes_lib:get_eredis_supervisioned_proc(),
     case eredis:q(EredisProc, ["RPOP", random_primes_lib:get_env(?EREDIS, number_list_key)]) of
+    % eredis:q(random_primes_lib:get_eredis_supervisioned_proc(), ["BRPOP", "number_list:2", 1]).
         {ok, undefined} ->
             case {Name, random_primes_lib:get_env(?APP, filter, type, dynamic)} of
-                {filter_1, _} -> timer:sleep(1000);
+                {filter_1, _} -> % one more attempt
+                    eredis:q(EredisProc, ["BRPOP", random_primes_lib:get_env(?EREDIS, number_list_key), 1]);
                 {_, dynamic} -> supervisor:terminate_child(random_primes_filter_sup, self());
                 _ -> timer:sleep(1000)
             end;
@@ -59,9 +61,9 @@ handle_continue(is_prime, #state{name = Name,
             try list_to_integer(binary_to_list(BinaryValue)) of
                 Number ->
                 case is_prime(Number) of
-                  true ->
-                    eredis:q_async(EredisProc, ["SADD", random_primes_lib:get_env(?EREDIS, prime_set_key), Number]);
-                  false -> not_prime
+                    true ->
+                        eredis:q_async(EredisProc, ["SADD", random_primes_lib:get_env(?EREDIS, prime_set_key), Number]);
+                    false -> not_prime
                 end
             catch
                 _:_ ->  not_binary_integer
@@ -90,19 +92,18 @@ terminate(Reason, _State) ->
     ok.
 
 % Need for tests
-% -spec create_prime_list(pos_integer()) -> [pos_integer()]. 
+-spec create_prime_list(pos_integer(), atom() | pos_integer()) -> [pos_integer()].
 create_prime_list(Int, Name) when is_atom(Name) ->
     logger:debug("prime list creating"),
     InitPrimeList = [3, 2],
     PrimeList = create_prime_list(Int, InitPrimeList),
     gen_server:cast(Name, {set_prime_list, PrimeList}),
     PrimeList;
-% -spec create_prime_list(pos_integer(), [pos_integer()]) -> [pos_integer()]. 
 create_prime_list(Int, PrimeList) ->
     [H|_T] = UpdatedPrimeList = next_prime_list(PrimeList),
     if 
-      H < Int -> create_prime_list(Int, UpdatedPrimeList);
-      true -> PrimeList
+        H < Int -> create_prime_list(Int, UpdatedPrimeList);
+        true -> PrimeList
     end.
 
 -spec next_prime_list([pos_integer()]) -> [pos_integer()].
@@ -112,8 +113,8 @@ next_prime_list(PrimeList = [H|_T]) ->
 -spec next_prime_list(pos_integer(), [pos_integer()]) -> [pos_integer()].
 next_prime_list(MayBePrime, PrimeList) ->
     case is_prime(MayBePrime) of
-      true -> [MayBePrime|PrimeList];
-      false -> next_prime_list(MayBePrime + 2, PrimeList)
+        true -> [MayBePrime|PrimeList];
+        false -> next_prime_list(MayBePrime + 2, PrimeList)
     end.
 
 -spec is_prime(pos_integer()) -> boolean().
@@ -126,9 +127,8 @@ is_prime(_) -> false.
 is_prime(_, Max, Max) ->
     true;
 is_prime(N, Div, Max) ->
-    if
-      N rem Div =:= 0 -> false;
-      true -> is_prime(N, Div + 1, Max)
+    if  N rem Div =:= 0 -> false;
+        true -> is_prime(N, Div + 1, Max)
     end.
 
 %%%===================================================================
