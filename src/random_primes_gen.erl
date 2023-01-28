@@ -67,7 +67,9 @@ random_number_loop(Rate, Delay) ->
 
     gen_server:call(?MODULE, generate_random_number_evenly),
 
-    if  LastDelay > 1000000 -> no_sleep; % us
+    if  LastDelay > 1000000 ->
+            % extra sleep in case low rate
+            timer:sleep(1000 div Rate);% ms
         true -> timer:sleep(Delay) % ms
     end,
 
