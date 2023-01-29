@@ -30,15 +30,15 @@ init([PrimeRange, RatePerSecond]) ->
     {ok, #state{prime_range = PrimeRange,
                 rate_per_second = RatePerSecond}}.
 
-handle_call(generate_random_number_evenly, _From, State) ->
-    RandomNumber = erlang:phash2(os:timestamp(), State#state.prime_range - 1) +2,
-    EredisProc = random_primes_lib:get_eredis_supervisioned_proc(),
-    eredis:q_async(EredisProc, ["LPUSH", random_primes_lib:get_env(?EREDIS, number_list_key), RandomNumber]),
-    {reply, ok, State};
 handle_call(Request, _From, State) ->
     logger:error("Unexpected Request ~p", [Request]),
     {reply, ok, State}.
 
+handle_cast(generate_random_number_evenly, State) ->
+    RandomNumber = erlang:phash2(os:timestamp(), State#state.prime_range - 1) +2,
+    EredisProc = random_primes_lib:get_eredis_supervisioned_proc(),
+    eredis:q_async(EredisProc, ["LPUSH", random_primes_lib:get_env(?EREDIS, number_list_key), RandomNumber]),
+    {noreply, State};
 handle_cast(Msg, State) ->
     logger:info("Unexpected Msg ~p", [Msg]),
     {noreply, State}.
@@ -65,7 +65,7 @@ random_number_loop(Rate, Delay) ->
     LastDelay = timer:now_diff(CurrentTS, OldTS),
     put(ts_history, NewTSHistory),
 
-    gen_server:call(?MODULE, generate_random_number_evenly),
+    gen_server:cast(?MODULE, generate_random_number_evenly),
 
     if  LastDelay > 1000000 ->
             % extra sleep in case low rate
