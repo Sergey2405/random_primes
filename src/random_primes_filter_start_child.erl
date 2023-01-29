@@ -4,11 +4,16 @@
 %%%-------------------------------------------------------------------
 
 -module(random_primes_filter_start_child).
--behaviour(supervisor).
+-behaviour(gen_server).
 
--export([start_link/0,
-         init/1]).
-
+-export([start_link/0]).
+%% gen_server callbacks
+-export([init/1,
+         handle_call/3,
+         handle_cast/2,
+         handle_info/2,
+         code_change/3,
+         terminate/2]).
 -export([observer/1,
          make_childs/2]). 
 
@@ -16,16 +21,13 @@
 
 -define(SERVER, ?MODULE).
 
+-record(state, {}).
+
 start_link() ->
-    supervisor:start_link({local, ?SERVER}, ?MODULE, []).
+    % supervisor:start_link({local, ?SERVER}, ?MODULE, []).
+    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 init([]) ->
-    process_flag(trap_exit, false), 
-
-    SupFlags = #{strategy => one_for_one,
-                 intensity => 10,
-                 period => 1},
- 
     MaxNumberOfProcesses = random_primes_lib:get_env(?APP, filter, max_processes, ?MAX_FILTER_PROCESSES),
     FilterType = random_primes_lib:get_env(?APP, filter, type, static),
     case FilterType of
@@ -34,10 +36,27 @@ init([]) ->
         _ ->
             timer:apply_after(1000, ?MODULE, make_childs, [add, MaxNumberOfProcesses])
     end,
+    {ok, #state{}}.
 
-    {ok, {SupFlags, []}}.
+handle_call(Request, _From, State) ->
+    logger:error("Unexpected Request ~p", [Request]),
+    {reply, ok, State}.
+
+handle_cast(Msg, State) ->
+    logger:info("Unexpected Msg ~p", [Msg]),
+    {noreply, State}.
+
+handle_info(_, State) ->
+    {noreply, State}.
+
+code_change(_OldVsn, State, _Extra) -> {ok, State}.
+
+terminate(Reason, _State) ->
+    logger:info("Terminate with reason", [Reason]),
+    ok.
 
 observer(Delay) ->
+    io:format("observer self()=~p~n",[self()]),
     put(llen_history, [0]),
     loop_observer(Delay).
 
@@ -73,7 +92,7 @@ make_childs(add, Number) when Number > 0 ->
 make_childs(delete, Number) when Number > 0 ->
     delete_child(),
     make_childs(delete, Number - 1);
-make_childs(_, Number) -> ok.
+make_childs(_, _) -> ok.
 
 add_child() ->
     ProcIxs = get_proc_ixs(),
