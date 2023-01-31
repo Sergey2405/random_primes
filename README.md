@@ -33,7 +33,7 @@ Key of the Set is set in the config also, see desscrption.
 The third part is obligatory. It starts erlang Redis with corresponding parameters:
 - IP of Redis host;
 - port;
-- database;
+- database.
 
 DB password is not enabled yet. Thereby, Redis server should be run on a remote/local host
 without protected mode as follows:
@@ -70,19 +70,19 @@ Is represent as map with following parameters:
    It is more or equal 1 and limited by max_processes parameter.
 
 - max_processes - integer, 1000 by default.
-  Defines max number of filter processes.
+  defines max number of filter processes.
 
 - dynamic_interval - integers, ms, 1000 by default.
-  Defines time interval when the filter calculates wether to increase number of processes.
+  defines time interval when the filter calculates wether to increase number of processes.
 
 
 eredis parameters - parameters to connect to Redis
 
-host = Host IP, "127.0.0.1" by default.
+- host = Host IP, "127.0.0.1" by default.
 
-port = port number, 6379 by default.
+- port = port number, 6379 by default.
 
-database - Redis DB, 0 by default.
+- database - Redis DB, 0 by default.
 
 number_list_key required parameter. Redis List key where generated numbers stored/enqueued
 and then are fetched for checking if are prime.
@@ -102,5 +102,5 @@ random_primes_filter:test().
 
 Ckecks whether all the stored primary numbers are really primary.
 ```
-checks_primes_in_db
+random_primes_filter::checks_primes_in_db().
 ```

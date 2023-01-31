@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%% @doc random_primes_filter_sup level supervisor. 
+%% @doc random_primes_filter_sup supervisor for filter(s).
 %% @end
 %%%-------------------------------------------------------------------
 

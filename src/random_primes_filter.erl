@@ -19,7 +19,7 @@
 -include("random_primes.hrl").
 
 -record(state, {
-    name = undefined :: atom(), 
+    name = undefined :: atom(),
     prime_range = ?PRIME_RANGE :: pos_integer(),
     rate_per_second = ?RATE_PER_SECOND :: pos_integer(),
     delay = 1000 :: pos_integer(), %ms
@@ -48,7 +48,6 @@ handle_continue(is_prime, #state{name = Name,
     logger:debug("~p:handle_continue/2",[?MODULE]),
     EredisProc = random_primes_lib:get_eredis_supervisioned_proc(),
     case eredis:q(EredisProc, ["RPOP", random_primes_lib:get_env(?EREDIS, number_list_key)]) of
-    % eredis:q(random_primes_lib:get_eredis_supervisioned_proc(), ["BRPOP", "number_list:2", 1]).
         {ok, undefined} ->
             case {Name, random_primes_lib:get_env(?APP, filter, type, dynamic)} of
                 {filter_1, _} -> % one more attempt
@@ -91,7 +90,7 @@ terminate(Reason, _State) ->
     logger:info("Terminate with reason", [Reason]),
     ok.
 
-% Need for tests
+%% Need for tests
 -spec create_prime_list(pos_integer(), atom() | [pos_integer()]) -> [pos_integer()].
 create_prime_list(Int, Name) when is_atom(Name) ->
     logger:debug("prime list creating"),
