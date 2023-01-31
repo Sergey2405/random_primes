@@ -1,5 +1,5 @@
 -define(APP, random_primes).
--define(SUPER_VISOR, random_primes_sup).
+-define(SUPERVISOR, random_primes_sup).
 -define(EREDIS, eredis).
 
 -define(LOCAL_HOST, "127.0.0.1").
@@ -10,4 +10,14 @@
 -define(PRIME_RANGE, 1000000).
 -define(RATE_PER_SECOND, 3000).
 
+-define(MAX_FILTER_PROCESSES, 1000).
+-define(FILTER_DYNAMIC_INTERVAL, 1000).%ms
+
 -define(EUNIT, eunit).
+
+-define(SPEC_WORKER(Id), #{id => Id, start => {Id, start_link, []}}).
+-define(SPEC_WORKER(Id, Args), #{id => Id, start => {Id, start_link, Args}}).
+-define(SPEC_WORKER(Id, M, Args), #{id => Id, start => {M, start_link, Args}}).
+-define(SPEC_WORKER(Id, M, F, Args), #{id => Id, start => {M, F, Args}}).
+
+-define(SPEC_SUPERVISOR(Id), #{id => Id, start => {Id, start_link, []},type => supervisor}).

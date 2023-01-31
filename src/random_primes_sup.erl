@@ -4,40 +4,22 @@
 %%%-------------------------------------------------------------------
 
 -module(random_primes_sup).
-
 -behaviour(supervisor).
 
--export([start_link/0]).
-
--export([init/1]).
+-export([start_link/0,
+         init/1]).
 
 -include("random_primes.hrl").
 
 -define(SERVER, ?MODULE).
 
--define(SPEC_WORKER(Id), #{id => Id, start => {Id, start_link, []}}).
--define(SPEC_WORKER(Id, Args), #{id => Id, start => {Id, start_link, Args}}).
--define(SPEC_WORKER(Id, M, F, Args), #{id => Id, start => {M, F, Args}}).
-
-
 start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
-%% sup_flags() = #{strategy => strategy(),         % optional
-%%                 intensity => non_neg_integer(), % optional
-%%                 period => pos_integer()}        % optional
-%% child_spec() = #{id => child_id(),       % mandatory
-%%                  start => mfargs(),      % mandatory
-%%                  restart => restart(),   % optional
-%%                  shutdown => shutdown(), % optional
-%%                  type => worker(),       % optional
-%%                  modules => modules()}   % optional
 init([]) ->
     SupFlags = #{strategy => one_for_one,
                  intensity => 10,
                  period => 1},
-    PrimRange = random_primes_lib:get_env(?APP, prime_range, ?PRIME_RANGE),
-    RatePerSecond = random_primes_lib:get_env(?APP, rate_per_second, ?RATE_PER_SECOND),
 
     EredisHost = random_primes_lib:get_env(?EREDIS, host, ?LOCAL_HOST),
     EredisPort = random_primes_lib:get_env(?EREDIS, port, ?EREDIS_PORT),
@@ -45,14 +27,17 @@ init([]) ->
 
     ChildSpecs = [?SPEC_WORKER(eredis, [EredisHost, EredisPort, EredisDB])],
     ChildSpecs2 = case random_primes_lib:get_env(?APP, generator) of
-                    true -> [?SPEC_WORKER(random_primes_gen, [PrimRange, RatePerSecond])|ChildSpecs];
-                    _ -> ChildSpecs
+                    undefined -> ChildSpecs;
+                    MapValue when is_map(MapValue) ->
+                        RatePerSecond = random_primes_lib:get_env(?APP, generator, rate_per_second, ?RATE_PER_SECOND),
+                        PrimeRange = random_primes_lib:get_env(?APP, generator, prime_range, ?RATE_PER_SECOND),
+                        [?SPEC_WORKER(random_primes_gen, [PrimeRange, RatePerSecond])|ChildSpecs]
                   end,
     ChildSpecs3 = case random_primes_lib:get_env(?APP, filter) of
-                    true -> [?SPEC_WORKER(random_primes_filter, [PrimRange, RatePerSecond])|ChildSpecs2];
-                    _ -> ChildSpecs2
+                    undefined -> ChildSpecs2;
+                    _ ->
+                        [?SPEC_SUPERVISOR(random_primes_filter_start_child)|
+                         [?SPEC_SUPERVISOR(random_primes_filter_sup)|ChildSpecs2]]
                   end,
 
     {ok, {SupFlags, ChildSpecs3}}.
- 
-%% internal functions
